@@ -4,20 +4,91 @@ import * as Texture from './../graphics/texture';
 
 export interface MapTile {
   tile_entity: Entity.BaseEntity;
-  
+  is_collision_wall(): boolean;
+  is_collision_entity(entity: Entity.CollidesEntity): boolean;
+  is_collision_point(x: number, y: number): boolean;
+  get_collision_points(entity: Entity.CollidesEntity): Phaser.Geom.Point[];
+
+  get_left_side(): number;
+  get_right_side(): number;
+  get_top_side(): number;
+  get_bottom_side(): number;
+  tint(): void;
+  untint(): void;
 }
 
 export class WallMapTile implements MapTile{
-  tile_entity: Entity.BaseEntity; 
+  tile_entity: Entity.StaticCollidesEntity;
   constructor(image: Display.DisplayImage){
-    this.tile_entity = new Entity.BaseEntity(image);
+    this.tile_entity = new Entity.StaticCollidesEntity(image);
+    this.tile_entity.set_axis_rect_collision()
+  }
+  get_left_side(): number{
+    return this.tile_entity.object.x-this.tile_entity.object.width/2;
+  }
+  get_right_side(): number{
+    return this.tile_entity.object.x+this.tile_entity.object.width/2;
+  }
+  get_top_side(): number{
+    return this.tile_entity.object.y-this.tile_entity.object.height/2;
+  }
+  get_bottom_side(): number {
+    return this.tile_entity.object.y+this.tile_entity.object.height/2;
+  }
+  is_collision_wall(): boolean {
+    return true;
+  }
+  is_collision_entity(entity: Entity.CollidesEntity): boolean{
+    return this.tile_entity.is_entity_collision(entity);
+  }
+  get_collision_points(entity: Entity.CollidesEntity): Phaser.Geom.Point[]{
+    return this.tile_entity.get_entity_collision_points(entity);
+  }
+  tint(){
+    this.tile_entity.object.setTintFill(0xffffff);
+  }
+  untint(){
+    this.tile_entity.object.clearTint();
   }
 }
 
 export class FloorMapTile implements MapTile{
-  tile_entity: Entity.StaticCollidesEntity;
+  tile_entity: Entity.BaseEntity; 
   constructor(image: Display.DisplayImage){
-    this.tile_entity = new Entity.StaticCollidesEntity(image);
+    this.tile_entity = new Entity.BaseEntity(image);
+  }
+  get_left_side(): number{
+    return this.tile_entity.object.x-this.tile_entity.object.width/2;
+  }
+  get_right_side(): number{
+    return this.tile_entity.object.x+this.tile_entity.object.width/2;
+  }
+  get_top_side(): number{
+    return this.tile_entity.object.y-this.tile_entity.object.height/2;
+  }
+  get_bottom_side(): number {
+    return this.tile_entity.object.y+this.tile_entity.object.height/2;
+  }
+  is_collision_point(x: number, y: number): boolean {
+    //todo
+    //this.tile_entity.
+  }
+  is_collision_wall(): boolean {
+    return false;
+  }
+  is_collision_entity(entity: Entity.CollidesEntity): boolean{
+    return false;
+  }
+  get_collision_points(entity: Entity.CollidesEntity): Phaser.Geom.Point[]{
+    return [];
+  }
+
+  tint(){
+    this.tile_entity.object.setTintFill(0xffffff);
+  }
+
+  untint(){
+    this.tile_entity.object.clearTint();
   }
 }
 
@@ -43,13 +114,12 @@ export class SquareTileFactory{
     this.height = height;
     this.scaled_textures = new Map();
   }
-  create_tile(scene: Phaser.Scene, x: number, y: number, texture: string): MapTile{
+  create_tile(scene: Phaser.Scene, x: number, y: number, texture: string, is_wall: boolean=false): MapTile{
     if(!this.scaled_textures.has(texture)){
       this.create_scaled_texture(scene, texture);
     }
-
     const obj = new Display.DisplayImage(scene, x, y, this.scaled_textures.get(texture)!.key);
-    return new WallMapTile(obj);
+    return is_wall ? new WallMapTile(obj) : new FloorMapTile(obj);
   }
 
   create_scaled_texture(scene: Phaser.Scene, texture_name: string): ScaledTextureKey{

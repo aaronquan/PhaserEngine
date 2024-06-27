@@ -17,6 +17,7 @@ export function default_config(scenes: Types.Scenes.SceneType | Types.Scenes.Sce
     parent: parent,
     backgroundColor: '#223344',
     scene: scenes,
+    //pipeline: [ColorPostFX]
   }
   if(physics){
     config.physics = {
@@ -33,7 +34,7 @@ export function matter_config(scenes: Types.Scenes.SceneType | Types.Scenes.Scen
   parent: string="game-container",
   width: number=1024, height: number=768,):Types.Core.GameConfig{
   return{
-    type: AUTO,
+    type: Phaser.WEBGL,
     width: width,
     height: height,
     parent: parent,

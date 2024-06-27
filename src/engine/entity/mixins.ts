@@ -5,21 +5,14 @@ import * as Interface from "./../graphics/interface";
 
 type GConstructor<T = {}> = new (...args: any[]) => T;
 
-export type Entitiable = GConstructor<Entity.BaseEntity>;
-
-export function MatterCollision<TBase extends Entitiable>(Base: TBase){
-  return class MatterCollision extends Base{
-    collision_area: MatterJS.Body
-    constructor(...args: any[]){
-      super(...args);
-    }
-  }
-}
+type Entitiable = GConstructor<Entity.BaseEntity>;
 
 interface MoverEntity extends Entity.BaseEntity{
   readonly velocity: Phaser.Math.Vector2;
-  //rotation: number;
+  last_position: Phaser.Math.Vector2;
+
   move_to(x:number, y:number): void;
+  move(x:number, y:number): void;
   set_velocity(x:number, y:number): void;
 }
 
@@ -28,10 +21,12 @@ type MoverEntitiable = GConstructor<MoverEntity>;
 export function Moving<TBase extends Entitiable>(Base: TBase){
   return class SingleCollision extends Base implements MoverEntity{
     readonly velocity: Phaser.Math.Vector2;
+    last_position: Phaser.Math.Vector2;
     //rotation: number;
     constructor(...args: any[]){
       super(...args);
       this.velocity = new Phaser.Math.Vector2();
+      this.last_position = new Phaser.Math.Vector2(this.object.x, this.object.y);
     }
     set_velocity(x:number, y:number): void{
       this.velocity.x = x; this.velocity.y = y; 
@@ -39,13 +34,26 @@ export function Moving<TBase extends Entitiable>(Base: TBase){
     move_to(x:number, y:number): void{
       this.object.setX(x);
       this.object.setY(y);
-
+    }
+    move(x:number, y:number){
+      this.object.setX(this.object.x+x);
+      this.object.setY(this.object.y+y);
+    }
+    update_delta(delta: number){
+      super.update_delta(delta);
+      this.last_position = new Phaser.Math.Vector2(this.object.x, this.object.y);
+      const movement = this.velocity.clone();
+      movement.scale(delta);
+      this.move(movement.x, movement.y);
     }
     update(){
       super.update();
-      //this.object.setRotation()
+      this.last_position = new Phaser.Math.Vector2(this.object.x, this.object.y);
       this.object.setX(this.object.x+this.velocity.x);
       this.object.setY(this.object.y+this.velocity.y);
+    }
+    is_static(): boolean {
+      return false;
     }
   }
 }
@@ -77,6 +85,13 @@ export function StaticSingleCollides<TBase extends Entitiable>(Base: TBase){
     is_point_collision(x:number, y: number){
       if(!this.collision_object) return false;
       return this.collision_object.is_point_collision(x, y);
+    }
+    get_entity_collision_points(entity: SingleCollision): Phaser.Geom.Point[]{
+      if(!this.collision_object || !entity.collision_object) return [];
+      return this.collision_object?.get_collision_points(entity.collision_object);
+    }
+    is_collision(): boolean{
+      return true;
     }
   }
 }
@@ -116,14 +131,29 @@ export function SingleCollides<TBase extends MoverEntitiable>(Base: TBase){
       if(!this.collision_object) return false;
       return this.collision_object.is_point_collision(x, y);
     }
+    get_entity_collision_points(entity: SingleCollision): Phaser.Geom.Point[]{
+      if(!this.collision_object || !entity.collision_object) return [];
+      return this.collision_object?.get_collision_points(entity.collision_object);
+    }
+    shift_object_collision(entity: SingleCollision){
+      if(!this.collision_object || !entity.collision_object) return;
+      const movement = this.collision_object!.shift_object_collision(entity.collision_object, this.velocity);
+    }
     move_to(x: number, y: number): void {
       super.move_to(x, y);
       this.collision_object?.move_to(x, y);
+    }
+    move(x: number, y: number): void {
+      super.move(x, y);
+      this.collision_object?.move(new Phaser.Math.Vector2(x, y));
     }
     update(){
       super.update();
       this.collision_object?.rotate(this.object.rotation);
       this.collision_object?.move(this.velocity);
+    }
+    is_collision(): boolean{
+      return true;
     }
   }
 }

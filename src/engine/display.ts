@@ -32,3 +32,10 @@ export class DisplayImage extends Phaser.GameObjects.Image{
     scene.add.existing(this);
   }
 }
+
+export class DisplayGraphics extends Phaser.GameObjects.Graphics{
+  constructor(scene: Phaser.Scene){
+    super(scene);
+    scene.add.existing(this);
+  }
+}

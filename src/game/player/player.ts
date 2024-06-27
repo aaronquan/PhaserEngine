@@ -9,7 +9,7 @@ export class Player extends Entity.CollidesEntity{
   //velocity: Phaser.Math.Vector2;
   constructor(scene: Phaser.Scene){
     super(new Display.DisplaySprite(scene, 180, 350, "star"));
-    this.move_speed = 10;
+    this.move_speed = 150;
     //console.log(this.health_bar);
     //this.set_circle_collision();
     //this.set_axis_rect_collision();

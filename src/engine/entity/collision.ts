@@ -96,13 +96,13 @@ export interface StaticCollisionObject{
   point?: Phaser.Geom.Point;
   rectangle?: Phaser.Geom.Rectangle;*/
 
-  //add_debug(scene:Phaser.Scene): void;
   set_debug_state(state:DebugState): void;
   get_geom_shape(): GeneralCollisionObject;
   is_collision(object: StaticCollisionObject): boolean;
   is_point_collision(x:number, y: number): boolean;
-  //get_type(): CollisionType;
-  //get_circle():
+  get_collision_points(object: StaticCollisionObject): Phaser.Geom.Point[];
+  shift_object_collision(object: StaticCollisionObject, 
+    object_velocity: Phaser.Math.Vector2): Phaser.Math.Vector2;
 }
 
 
@@ -119,6 +119,9 @@ class StaticCircleCollisionObject implements StaticCollisionObject{
     this.type = CollisionType.Circle;
     this.circle = new CollisionCircle(x, y, radius);
   }
+  shift_object_collision(object: StaticCollisionObject): Phaser.Math.Vector2 {
+    throw new Error("Method not implemented.");
+  }
   add_debug(scene: Phaser.Scene): void{
     this.circle.add_debug(scene);
   };
@@ -134,6 +137,9 @@ class StaticCircleCollisionObject implements StaticCollisionObject{
   }
   is_point_collision(x:number, y: number): boolean{
     return this.circle.contains(x, y);
+  }
+  get_collision_points(object: CollisionObject): Phaser.Geom.Point[]{
+    return circle_object_collision_points(this.circle, object);
   }
 }
 
@@ -154,6 +160,9 @@ class StaticAxisRectangleCollisionObject implements StaticCollisionObject{
     this.type = CollisionType.AxisRectangle;
     this.rectangle = new AxisCollisionRectangle(x, y, width, height);
   }
+  shift_object_collision(object: StaticCollisionObject, object_velocity: Phaser.Math.Vector2): Phaser.Math.Vector2 {
+    throw new Error("Method not implemented.");
+  }
   add_debug(scene: Phaser.Scene): void{
     this.rectangle.add_debug(scene);
   };
@@ -168,6 +177,9 @@ class StaticAxisRectangleCollisionObject implements StaticCollisionObject{
   }
   is_point_collision(x:number, y: number): boolean{
     return this.rectangle.contains(x, y);
+  }
+  get_collision_points(object: CollisionObject): Phaser.Geom.Point[]{
+    return axis_rectangle_object_collision_points(this.rectangle, object);
   }
 }
 
@@ -190,6 +202,12 @@ class StaticTriangleCollisionObject implements StaticCollisionObject{
     x3: number, y3: number){
       this.type = CollisionType.Triangle;
       this.triangle = new CollisionTriangle(x, y, x1, y1, x2, y2, x3, y3);
+  }
+  shift_object_collision(object: StaticCollisionObject, object_velocity: Phaser.Math.Vector2): Phaser.Math.Vector2 {
+    throw new Error("Method not implemented.");
+  }
+  get_collision_points(object: CollisionObject): Phaser.Geom.Point[] {
+    throw new Error("Method not implemented.");
   }
   add_debug(scene: Phaser.Scene): void{
     this.triangle.add_debug(scene);
@@ -227,6 +245,9 @@ class RectangleCollisionObject implements CollisionObject{
     this.type = CollisionType.Rectangle;
     this.rectangle = new CollisionRectangle(x, y, width, height);
   }
+  shift_object_collision(object: StaticCollisionObject, object_velocity: Phaser.Math.Vector2): Phaser.Math.Vector2 {
+    throw new Error("Method not implemented.");
+  }
   add_debug(scene: Phaser.Scene): void{
     this.rectangle.add_debug(scene);
   };
@@ -252,7 +273,9 @@ class RectangleCollisionObject implements CollisionObject{
   is_point_collision(x: number, y: number): boolean {
     return this.rectangle.contains(x, y);
   }
-  
+  get_collision_points(object: CollisionObject): Phaser.Geom.Point[] {
+    throw new Error("Method not implemented.");
+  }
 }
 
 interface CollisionShape{
@@ -560,8 +583,97 @@ function is_rect_object_collision(rect: CollisionRectangle, object: CollisionObj
   return false;
 }
 
-function is_point_object_collision(){
+function axis_rectangle_object_collision_points(rect: Phaser.Geom.Rectangle, object: CollisionObject): Phaser.Geom.Point[]{
+  const obj = object.get_geom_shape();
+  let points = [];
+  switch(object.type){
+    case CollisionType.Circle:
+      if(!obj.circle) return [];
+      points = Phaser.Geom.Intersects.GetCircleToRectangle(obj.circle, rect);
+      break;
+    case CollisionType.AxisRectangle:
+      if(!obj.axis_rectangle) return [];
+      points = Phaser.Geom.Intersects.GetRectangleToRectangle(rect, obj.axis_rectangle);
+      break;
+    case CollisionType.Triangle: 
+      if(!obj.triangle) return [];
+      points = Phaser.Geom.Intersects.GetRectangleToTriangle(rect, obj.triangle);
+      break;
+    case CollisionType.Rectangle:
+      if(!obj.rectangle) return [];
+      points.push(...Phaser.Geom.Intersects.GetLineToRectangle(obj.rectangle.triangle1.getLineA(), rect));
+      points.push(...Phaser.Geom.Intersects.GetLineToRectangle(obj.rectangle.triangle1.getLineB(), rect));
+      points.push(...Phaser.Geom.Intersects.GetLineToRectangle(obj.rectangle.triangle2.getLineA(), rect));
+      points.push(...Phaser.Geom.Intersects.GetLineToRectangle(obj.rectangle.triangle2.getLineB(), rect));
+  }
+  return points;
+}
+
+function circle_object_collision_points(circle: Phaser.Geom.Circle, object: CollisionObject): Phaser.Geom.Point[]{
+  const obj = object.get_geom_shape();
+  let points = [];
+  switch(object.type){
+    case CollisionType.Circle:
+      if(!obj.circle) return [];
+      points = Phaser.Geom.Intersects.GetCircleToCircle(circle, obj.circle);
+      break;
+    case CollisionType.AxisRectangle:
+      if(!obj.axis_rectangle) return [];
+      points = Phaser.Geom.Intersects.GetCircleToRectangle(circle, obj.axis_rectangle);
+      break;
+    case CollisionType.Triangle: 
+      if(!obj.triangle) return [];
+      points = Phaser.Geom.Intersects.GetTriangleToCircle(obj.triangle, circle);
+      break;
+    case CollisionType.Rectangle:
+      if(!obj.rectangle) return [];
+      points.push(...Phaser.Geom.Intersects.GetLineToRectangle(obj.rectangle.triangle1.getLineA(), circle));
+      points.push(...Phaser.Geom.Intersects.GetLineToRectangle(obj.rectangle.triangle1.getLineB(), circle));
+      points.push(...Phaser.Geom.Intersects.GetLineToRectangle(obj.rectangle.triangle2.getLineA(), circle));
+      points.push(...Phaser.Geom.Intersects.GetLineToRectangle(obj.rectangle.triangle2.getLineB(), circle));
+      break;
+  }
+  return points;
+}
+
+//amount the collision object should move when facing collision
+export function axis_rectangle_shift_collision(rect: Phaser.Geom.Rectangle, object: CollisionObject,
+  object_velocity: Phaser.Math.Vector2
+):Phaser.Math.Vector2{
+  const obj = object.get_geom_shape();
+  let movement = new Phaser.Math.Vector2();
+  switch(object.type){
+    case CollisionType.Circle:
+      if(!obj.circle) return movement;
+      rect.contains(obj.circle.left, obj.circle.y);
+  }
+  return movement;
+}
+
+//expects pre update point axis rectangle
+//returns point + velocity, 0 movement
+function axis_rectangle_point_collision_from_velocity(
+  rect: Phaser.Geom.Rectangle, x:number, y: number,
+  object_velocity: Phaser.Math.Vector2
+): Phaser.Math.Vector2{
+  const point_inside = rect.contains(x+object_velocity.x, y+object_velocity.y);
+  const movement = new Phaser.Math.Vector2();
+  if(point_inside){
+    //let dx = 0; let dy = 0;
+    if(object_velocity.x > 0){
+      movement.x = rect.left - x;
+    }else if(object_velocity.x < 0){
+      movement.x = rect.right - x;
+    }
+    if(object_velocity.y > 0){
+      movement.y = rect.top - y;
+    }else if(object_velocity.y < 0){
+      movement.y = rect.bottom - y;
+    }
+  }
   
+  return movement; 
+
 }
 
 /*
